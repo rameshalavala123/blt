@@ -1,0 +1,187 @@
+1. Install chef server
+2. Create one seperate dir and create new file
+i,e hello.rb -----> ruby language
+
+vim hello.rb
+
+file 'hold' do
+	content 'hello world'
+end 
+save the file
+3.root@chef:~/chef-repo# chef-apply hello.rb
+any packeage we can install ie nginx, apahe etc...
+
+5. vim hello.rb
+package 'apache2'
+service 'apache2' do  NOte: (if working on centos write httpd is service)
+action [:enable, :start]
+end
+6 setup home page 
+file "/var/www/html/index.html" do
+	content'<html>
+	<body>
+		<h1>hello world </h1>
+	</body>
+	</html>'
+end
+root@chef:~/chef-repo# chef-apply hello.rb
+
+will check its home page service is running or not...
+
+root@chef:~/chef-repo# ping google.com
+root@chef:~/chef-repo# apt-get update
+root@chef:~/chef-repo# chef-apply hello.rb
+---action install...
+
+root@chef:~/chef-repo# service apache2 start
+root@chef:~/chef-repo# netstat -tulpno (tcp, utp listing nos the process which is being used)
+root@chef:~/chef-repo# chef-server-ctl --help
+root@chef:~/chef-repo# chef-server-ctl stop
+root@chef:~/chef-repo# netstat -tulpno | grep :00
+root@chef:~/chef-repo# chef-apply hello.rb
+root@chef:~/chef-repo# curl localhost
+
+--------------work satation is compleated -----
+now start nodes to write cookbook on workstation and run in another node server (node server 32/64 bit)
+root@chef:~/chef-repo# rm hello.rb
+root@chef:~/chef-repo# mkdir cookbooks
+root@chef:~/chef-repo# cd cookbooks/
+---generating cookbook --
+root@chef:~/chef-repo/cookbooks# chef generate cookbook learn_chef_apache2 (learn_chef_apache2 is the cookbook name)
+root@chef:~/chef-repo/cookbooks# ls
+root@chef:~/chef-repo/cookbooks# apt-get tree (installing tree)
+root@chef:~/chef-repo/cookbooks# tree  (it wil sohw the structure of directory)
+///now we r going to create template for cookbook(learn_chef_apache2) index.html page
+root@chef:~/chef-repo/cookbooks# chef generate template learn_chef_apache2 index.html.erb
+root@chef:~/chef-repo/cookbooks# tree (now will check new folder wil be created i,e Template)
+
+/// set up the template inside template folder
+root@chef:~/chef-repo/cookbooks# vim learn_chef_apache2/templates/default/index.html.erb
+HELLO WORLD
+save it..
+root@chef:~/chef-repo/cookbooks# tree  (now changing the content of index.html.erb)
+///set up of recipe
+root@chef:~/chef-repo/cookbooks# vim learn_chef_apache2/recipes/default.rb
+// type
+package 'apache2'
+service 'apache2' do
+	action [:enable. :start]
+end
+template "var/www/html/index.html" do
+	source 'index.html.erb'
+end	
+///save it and run the cookbook
+root@chef:~/chef-repo/cookbooks# cd ..
+root@chef:~/chef-repo# chef-client --local-mode --runlist 'recipe[learn_chef_apache2]'
+root@chef:~/chef-repo# curl localhost
+display HELLO WORLD
+root@chef:~/chef-repo# vim /var/www/html/index.html
+check it will be there HELLO WORLD or not and quit
+
+///Now we are going to jump nodes how to manage nodes
+now we have node server and chef development kit
+now will configure chef server(it will be seperate another server)
+root@chef:~/chef-repo# 
+
+https://manage.chef.io/organizations/rameshorganization/getting_started
+create account and create organization download starter kit and copy into worksation, unzip folder....
+install stater kit.....
+root@chef:~/chef-repo# ls
+root@chef:~/chef-repo# ll  //it will show all hiden files
+///now starter kit is done...
+///now will download cookbooks from public repository
+https://supermarket.chef.io
+search postgres
+root@chef:~/chef-repo# knife cookbook site download learn_chef_apache2
+root@chef:~/chef-repo# tar -zxxvf learn_chef_apache2-0.2.1.tar.gz -C cookbooks( cookboos is a folder)
+root@chef:~/chef-repo# knife cookbook upload learn_chef_apache2
+ loginto node server...
+ goto workstation type
+ root@chef:~/chef-repo# ping 10.0.1.2 (node server ip address)
+ root@chef:~/chef-repo# knife bootstrap 10.0.1.2 --ssh-user ramesh --ssh-password '12345' --sudo --use-sudo-password --node-name cnode --run-list 'recipe[learn_chef_apache2]'
+ root@ubuntu:/home/ramesh# service apache2 status (it will check on node server)
+ root@chef:~/chef-repo# ifconfig (to check ip address of both)
+ root@chef:~/chef-repo# vim /etc/network/interface(quickly setup ip address  here)
+auto eth1
+iface eth1 inet dhcp
+save and quit
+ root@chef:~/chef-repo# knife bootstrap 192.160.56.60 --ssh-user ramesh --ssh-password '12345' --sudo --use-sudo-password --node-name cnode --run-list 'recipe[learn_chef_apache2]'
+connecting to 192.160.56.60....
+root@chef:~/chef-repo# knife node list (it will check how many nodes connected from workstation)
+root@chef:~/chef-repo# ifdown eth0  (if any problem while connecting need to check)
+root@chef:~/chef-repo# ifup eth0
+// to know complete information on node use below command
+knife cookbook list(it will show no of cookbooks is there)
+root@chef:~/chef-repo# knife node show cnode1
+
+---------------------------------------------done-----------------------------------------------
+
+simple cookbook exapmle
+
+# cookbook Name:: apache
+# Recipe:: default
+
+package "httpd" do
+action :install
+end
+
+service "httpd" do
+action [:enable, :start]
+end
+
+template "/var/www/html/index.html" do
+source "index.html.erb"
+mode "0644"
+end
+
+///////cookbook default folder:  chef-repo/cookbooks/apache/recipes/default
+///// index.html default folder is  chef-repo/cookbooks/apache/templates/default
+
+to upload cookbooks on chef server using this command:   knife cookbooks upload cookbook-name
+-------------------------------------------------------------------------------------------------------
+installing chef server:
+download and install
+$ login as root, password empty
+$ yum install chef-server-core-12.15.8-1.e16.x86_64.rpm
+or
+rpm -lvh chef-server-11.1.6.1.el6.x86.64.rpm
+if not accepting chef server to install on linux stop iptable:
+$ service iptables stop
+$ chkconfig iptables off
+$ cd /etc/yum.repos.d
+ls
+rm -rf Centos-*
+vi prod.repo
+[prod]
+baseurl=http://192.168.1.110/centos/6.8
+gpgcheck=0
+save and quit
+$ yum install chef-server-core-12.15.8-1.e16.x86_64.rpm
+chef-server network settings:
+
+cd /etc/sysconfig/network-scripts
+vi ifcfg-eth1
+DEVICE=eth1
+ONBOOT=yes
+BOOTPROTO=dhcp
+save and exit
+$ service network restart
+Run the following to start all of the services:
+$ sudo chef-server-ctl reconfigure
+if above command showing error then goto
+$ vi /etc/hosts
+add 192.168.1.152 chefserver
+save and exit
+$ sudo chef-server-ctl reconfigure
+cd
+[root@chefserver ~]# chef-server-ctl user-create ramesh ramesh ramesh@gmail.com 'redhat' --filename ex.pem
+[root@chefserver ~]# ls
+[root@chefserver ~]# less ex.pem
+
+
+
+Moving file from one place to other place:
+
+mv -v rameshalavala.pem ~/chef-repo/.chef
+
+
