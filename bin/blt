@@ -9,5 +9,3 @@
 
 // Shell wrapper for BLT robo app.
 require_once __DIR__ . '/blt-robo.php';
-
-
